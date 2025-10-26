@@ -9,15 +9,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const searchUrl = 'https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=' + encodeURIComponent(q) + '&limit=100';
+    const https = require('https');
+    const searchUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(q)}&limit=100`;
     
-    const response = await fetch(searchUrl);
-    
-    if (!response.ok) {
-      throw new Error('Bluesky API error: ' + response.status);
-    }
+    // Use https.get instead of fetch for Node.js compatibility
+    const fetchData = () => {
+      return new Promise((resolve, reject) => {
+        https.get(searchUrl, (response) => {
+          let data = '';
+          response.on('data', (chunk) => { data += chunk; });
+          response.on('end', () => {
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        }).on('error', reject);
+      });
+    };
 
-    const data = await response.json();
+    const data = await fetchData();
     
     if (!data.posts || data.posts.length === 0) {
       return res.json({ posts: [], message: 'No posts found' });
@@ -37,7 +49,7 @@ export default async function handler(req, res) {
         handle: post.author.handle,
         reposts: post.repostCount || 0,
         likes: post.likeCount || 0,
-        url: 'https://bsky.app/profile/' + post.author.handle + '/post/' + post.uri.split('/').pop(),
+        url: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split('/').pop()}`,
         createdAt: new Date(post.record.createdAt).toLocaleString()
       }));
 
