@@ -10,7 +10,8 @@ module.exports = (req, res) => {
     return res.status(400).json({ error: 'Search query required' });
   }
 
-  const searchUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(q)}&limit=100`;
+  // Try using bsky.social instead of public.api
+  const searchUrl = `https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(q)}&limit=100`;
   
   https.get(searchUrl, (apiResponse) => {
     let data = '';
@@ -22,6 +23,10 @@ module.exports = (req, res) => {
     apiResponse.on('end', () => {
       try {
         const result = JSON.parse(data);
+        
+        // Log the response for debugging
+        console.log('Bluesky response status:', apiResponse.statusCode);
+        console.log('Response data:', JSON.stringify(result).substring(0, 200));
         
         if (!result.posts || result.posts.length === 0) {
           return res.json({ posts: [], message: 'No posts found' });
